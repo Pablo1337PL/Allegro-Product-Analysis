@@ -1,2 +1,2 @@
 # Allegro-Product-Analysis
-Analysising products from Allegro online shop
+Analysing products from Allegro online shop

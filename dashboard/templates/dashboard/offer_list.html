@@ -1,0 +1,84 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Listings{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h2>Road Bike Listings</h2>
+    <div id="stats-bar" class="stats-bar">
+        <span id="stats-total">—</span> listings &mdash; avg price: <span id="stats-avg">—</span> PLN
+    </div>
+</div>
+
+<form id="filter-form"
+      hx-get="{% url 'offer_list' %}"
+      hx-target="#offer-rows"
+      hx-push-url="true"
+      hx-indicator="#htmx-spinner">
+    <div class="filter-grid">
+        <input type="search" name="search" placeholder="Search title..."
+               value="{{ request.GET.search|default:'' }}">
+        <select name="condition">
+            <option value="">All conditions</option>
+            {% for cond in conditions %}
+            <option value="{{ cond }}" {% if request.GET.condition == cond %}selected{% endif %}>
+                {{ cond|default:"Unknown" }}
+            </option>
+            {% endfor %}
+        </select>
+        <input type="number" name="min_price" placeholder="Min PLN"
+               value="{{ request.GET.min_price|default:'' }}" min="0">
+        <input type="number" name="max_price" placeholder="Max PLN"
+               value="{{ request.GET.max_price|default:'' }}" min="0">
+        <button type="submit">Filter</button>
+        <a href="{% url 'offer_list' %}" role="button" class="secondary">Reset</a>
+    </div>
+    <span id="htmx-spinner" class="htmx-indicator">Loading...</span>
+</form>
+
+<div id="offer-rows">
+    {% include "dashboard/_offer_rows.html" %}
+</div>
+
+<details class="chart-section">
+    <summary>Price Distribution</summary>
+    <canvas id="price-chart" height="80"></canvas>
+</details>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Stats
+    fetch("{% url 'stats_partial' %}")
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById("stats-total").textContent = d.total.toLocaleString();
+            document.getElementById("stats-avg").textContent = d.avg_price.toLocaleString();
+        });
+
+    // Chart
+    fetch("{% url 'price_chart_data' %}")
+        .then(r => r.json())
+        .then(d => {
+            if (!d.labels.length) return;
+            const ctx = document.getElementById("price-chart").getContext("2d");
+            new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: d.labels,
+                    datasets: [{
+                        label: "Offers",
+                        data: d.data,
+                        backgroundColor: "rgba(59, 130, 246, 0.55)",
+                        borderColor: "rgba(59, 130, 246, 0.9)",
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        });
+});
+</script>
+{% endblock %}

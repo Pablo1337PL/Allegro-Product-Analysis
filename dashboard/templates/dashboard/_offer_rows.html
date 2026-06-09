@@ -1,0 +1,44 @@
+<figure>
+<table role="grid">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Price</th>
+            <th>Condition</th>
+            <th>Seller</th>
+            <th>Fetched</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for offer in offers %}
+        <tr>
+            <td><a href="{% url 'offer_detail' offer.id %}">{{ offer.title|truncatechars:65 }}</a></td>
+            <td class="price">{{ offer.price|floatformat:0 }} {{ offer.currency }}</td>
+            <td>{{ offer.condition }}</td>
+            <td>{{ offer.seller_login }}</td>
+            <td>{{ offer.fetched_at|slice:":10" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="empty-row">No offers found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</figure>
+
+{% if is_paginated %}
+<nav class="pagination" aria-label="Pagination">
+    <ul>
+        {% if page_obj.has_previous %}
+        <li>
+            <a href="?page={{ page_obj.previous_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">&laquo; Prev</a>
+        </li>
+        {% endif %}
+        <li class="page-info">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</li>
+        {% if page_obj.has_next %}
+        <li>
+            <a href="?page={{ page_obj.next_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">Next &raquo;</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}

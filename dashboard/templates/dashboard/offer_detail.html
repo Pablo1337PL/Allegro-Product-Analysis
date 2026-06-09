@@ -1,0 +1,91 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ offer.title|truncatechars:40 }}{% endblock %}
+{% block content %}
+
+<p><a href="{% url 'offer_list' %}">&larr; Back to listings</a></p>
+
+<div class="offer-header grid">
+    <div>
+        <h1>{{ offer.title }}</h1>
+        <dl class="offer-meta">
+            <dt>Price</dt>
+            <dd class="price-big">{{ offer.price|floatformat:2 }} {{ offer.currency }}</dd>
+            <dt>Condition</dt>
+            <dd>{{ offer.condition|default:"—" }}</dd>
+            <dt>Type</dt>
+            <dd>{{ offer.listing_type|default:"—" }}</dd>
+            <dt>Seller</dt>
+            <dd>{{ offer.seller_login|default:"—" }}</dd>
+            <dt>Fetched</dt>
+            <dd>{{ offer.fetched_at|slice:":10" }}</dd>
+            {% if offer.offer_url %}
+            <dt>Allegro</dt>
+            <dd><a href="{{ offer.offer_url }}" target="_blank" rel="noopener">View original listing &rarr;</a></dd>
+            {% endif %}
+        </dl>
+    </div>
+    {% if offer.thumbnail_url %}
+    <div>
+        <img src="{{ offer.thumbnail_url }}" alt="{{ offer.title }}" class="thumbnail-main" loading="lazy">
+    </div>
+    {% endif %}
+</div>
+
+{% if images %}
+<section>
+    <h3>Images ({{ images|length }})</h3>
+    <div class="image-strip">
+        {% for img in images %}
+        <a href="{{ img.url }}" target="_blank" rel="noopener">
+            <img src="{{ img.url }}" alt="Image {{ img.position }}" loading="lazy" class="image-thumb">
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if parameters %}
+<section>
+    <h3>Parameters</h3>
+    <figure>
+    <table>
+        <thead><tr><th>Name</th><th>Value</th></tr></thead>
+        <tbody>
+            {% for param in parameters %}
+            <tr><td>{{ param.name }}</td><td>{{ param.value|default:"—" }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </figure>
+</section>
+{% endif %}
+
+{% if features %}
+<section>
+    <h3>ML Features</h3>
+    <figure>
+    <table>
+        <tbody>
+            {% if features.description_text %}
+            <tr><td>Description</td><td>{{ features.description_text|truncatechars:400 }}</td></tr>
+            {% endif %}
+            {% if features.extracted_groupset %}
+            <tr><td>Groupset</td><td>{{ features.extracted_groupset }}</td></tr>
+            {% endif %}
+            {% if features.extracted_frame_material %}
+            <tr><td>Frame material</td><td>{{ features.extracted_frame_material }}</td></tr>
+            {% endif %}
+            {% if features.price_predicted %}
+            <tr><td>Predicted price</td><td>{{ features.price_predicted|floatformat:0 }} PLN</td></tr>
+            {% endif %}
+            {% if features.anomaly_score %}
+            <tr><td>Anomaly score</td><td>{{ features.anomaly_score|floatformat:3 }}</td></tr>
+            {% endif %}
+            <tr><td>CLIP vector</td><td>{% if features.clip_vector %}computed{% else %}—{% endif %}</td></tr>
+        </tbody>
+    </table>
+    </figure>
+</section>
+{% endif %}
+
+{% endblock %}

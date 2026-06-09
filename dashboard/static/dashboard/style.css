@@ -1,0 +1,139 @@
+/* ── Layout ─────────────────────────────────────────────────── */
+header.container-fluid {
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    margin-bottom: 1.5rem;
+}
+
+a.nav-brand {
+    text-decoration: none;
+    color: inherit;
+}
+
+.page-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.page-header h2 {
+    margin: 0;
+}
+
+/* ── Stats bar ──────────────────────────────────────────────── */
+.stats-bar {
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+}
+
+/* ── Filter form ────────────────────────────────────────────── */
+.filter-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.filter-grid input,
+.filter-grid select {
+    flex: 1 1 160px;
+    margin: 0;
+}
+
+.filter-grid button,
+.filter-grid a[role="button"] {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0.5rem 1rem;
+}
+
+.htmx-indicator {
+    display: none;
+    font-size: 0.85rem;
+    color: var(--pico-muted-color);
+}
+
+.htmx-request .htmx-indicator {
+    display: inline;
+}
+
+/* ── Table ──────────────────────────────────────────────────── */
+td.price {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+td.empty-row {
+    text-align: center;
+    color: var(--pico-muted-color);
+    padding: 2rem;
+}
+
+/* ── Pagination ─────────────────────────────────────────────── */
+nav.pagination ul {
+    list-style: none;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 0;
+    margin: 1rem 0;
+}
+
+.page-info {
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+}
+
+/* ── Chart section ──────────────────────────────────────────── */
+.chart-section {
+    margin-top: 2rem;
+}
+
+/* ── Offer detail ───────────────────────────────────────────── */
+.offer-header {
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+dl.offer-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+}
+
+dl.offer-meta dt {
+    color: var(--pico-muted-color);
+    font-size: 0.85rem;
+}
+
+dl.offer-meta dd {
+    margin: 0;
+}
+
+.price-big {
+    font-size: 1.4rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.thumbnail-main {
+    max-width: 100%;
+    max-height: 360px;
+    border-radius: var(--pico-border-radius);
+}
+
+.image-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.image-thumb {
+    width: 120px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: var(--pico-border-radius);
+    border: 1px solid var(--pico-muted-border-color);
+}

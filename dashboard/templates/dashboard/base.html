@@ -1,0 +1,23 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Road Bikes{% endblock %} — Allegro Analyser</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{% static 'dashboard/style.css' %}">
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+    <header class="container-fluid">
+        <nav>
+            <ul><li><strong><a href="{% url 'offer_list' %}" class="nav-brand">Road Bikes Analyser</a></strong></li></ul>
+        </nav>
+    </header>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

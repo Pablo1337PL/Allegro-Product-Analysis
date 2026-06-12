@@ -174,4 +174,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    _BASE = os.getenv("BASE_URL")
+    _HOME = os.getenv("HOME_URL")
     main()

@@ -22,6 +22,7 @@ Allegro is protected by DataDome WAF. The scraper uses [undetected-geckodriver](
 
 | Layer | Technology |
 |---|---|
+| Python env | conda |
 | Scraping | Selenium + undetected-geckodriver (real Firefox) |
 | HTTP fallback | requests + BeautifulSoup4 / lxml |
 | Feature extraction | open-clip-torch (ViT-B-32), Pillow, NumPy |
@@ -30,7 +31,6 @@ Allegro is protected by DataDome WAF. The scraper uses [undetected-geckodriver](
 | Retry logic | tenacity |
 | Config | python-decouple + `.env` file |
 | Tests | pytest, pytest-django, factory-boy |
-| Python env | conda (`automl`) |
 
 ---
 
@@ -53,13 +53,12 @@ Allegro is protected by DataDome WAF. The scraper uses [undetected-geckodriver](
 │   └── templates/
 ├── downloader/          # SQLite writer shared by scraper and processor
 │   └── writer.py        # open_db, init_db, upsert_offer, upsert_parameters, upsert_images
-├── ml/                  # Future: price prediction + anomaly detection (Phase 4)
+├── ml/                  # Future: price prediction + anomaly detection
 ├── db/                  # SQLite database lives here (gitignored)
 ├── bikes_project/       # Django project settings
 ├── manage.py
 ├── requirements.txt
-├── .env.example
-└── CLAUDE.md            # Developer instructions
+└── .env.example
 ```
 
 ---

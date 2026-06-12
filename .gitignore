@@ -18,6 +18,9 @@ __pycache__/
 venv/
 dist/
 build/
+.pytest_cache/
+
+
 
 # Django
 *.log
@@ -31,3 +34,11 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# clip
+clip_cache/
+
+# claude 
+.claude/
+CLAUDE.md
+PLAN.md

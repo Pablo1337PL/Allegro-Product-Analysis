@@ -1,0 +1,377 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Statistics{% endblock %}
+{% block content %}
+
+<h1>Statistics</h1>
+
+<div class="stats-grid" style="margin-bottom:2rem">
+    <div class="stat-card">
+        <span class="stat-label">Total offers</span>
+        <span class="stat-value">{{ agg.total|default:"—" }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Avg price</span>
+        <span class="stat-value">{{ agg.avg_price|floatformat:0 }} PLN</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Min price</span>
+        <span class="stat-value">{{ agg.min_price|floatformat:0 }} PLN</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Max price</span>
+        <span class="stat-value">{{ agg.max_price|floatformat:0 }} PLN</span>
+    </div>
+</div>
+
+<section>
+    <h2>Price Distribution</h2>
+    <p class="muted">500 PLN buckets up to 25000 PLN, then one overflow bucket.</p>
+    <canvas id="price-chart" height="80"></canvas>
+</section>
+
+<div class="stats-two-col">
+    <section>
+        <h2>By Condition</h2>
+        <figure>
+        <table>
+            <thead><tr><th>Condition</th><th>Count</th><th>Avg price</th></tr></thead>
+            <tbody>
+                {% for row in by_condition %}
+                <tr>
+                    <td>{{ row.condition|default:"Unknown" }}</td>
+                    <td>{{ row.count }}</td>
+                    <td>{{ row.avg|floatformat:0|default:"—" }} PLN</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </figure>
+        <canvas id="condition-chart" height="120"></canvas>
+    </section>
+
+    <section>
+        <h2>Classification</h2>
+        <figure>
+        <table>
+            <thead><tr><th>Label</th><th>Count</th></tr></thead>
+            <tbody>
+                {% for row in by_classification %}
+                <tr>
+                    <td>
+                        {% if row.is_bike == 1 %}Bike
+                        {% elif row.is_bike == 0 %}Noise
+                        {% else %}Unclassified{% endif %}
+                    </td>
+                    <td>{{ row.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </figure>
+        <canvas id="bike-chart" height="120"></canvas>
+    </section>
+</div>
+
+<section>
+    <h2>Distributions</h2>
+    <p class="muted">Numeric spec columns from <code>parsed_offers</code>. Charts stay
+    empty until the corresponding column has data.</p>
+    <div class="stats-two-col">
+        <div><h3>Frame size (cm)</h3><canvas id="hist-frame_size_cm" height="160"></canvas></div>
+        <div><h3>Wheel size (in)</h3><canvas id="hist-wheel_size_inch" height="160"></canvas></div>
+        <div><h3>Tire width (mm)</h3><canvas id="hist-tire_width_mm" height="160"></canvas></div>
+        <div><h3>Production year</h3><canvas id="hist-production_year" height="160"></canvas></div>
+    </div>
+</section>
+
+<section>
+    <h2>Price &amp; Size Relationships</h2>
+    <div class="stats-two-col">
+        <div><h3>Price vs gear count</h3><canvas id="scatter-price_vs_gear_count" height="180"></canvas></div>
+        <div><h3>Price vs frame size</h3><canvas id="scatter-price_vs_frame_size_cm" height="180"></canvas></div>
+        <div><h3>Price vs weight</h3><canvas id="scatter-price_vs_weight_kg" height="180"></canvas></div>
+        <div><h3>Frame size vs rider height (min/mean/max)</h3><canvas id="scatter-frame_size_vs_height" height="180"></canvas></div>
+    </div>
+</section>
+
+<section>
+    <h2>Categorical Breakdowns</h2>
+    <div class="stats-two-col">
+        <div><h3>Bike type</h3><canvas id="bar-bike_type_enc" height="160"></canvas></div>
+        <div><h3>Gender</h3><canvas id="bar-gender_enc" height="160"></canvas></div>
+        <div><h3>Color by gender</h3><canvas id="bar-color_by_gender" height="160"></canvas></div>
+    </div>
+</section>
+
+<section>
+    <h2>Price by Spec (boxplot)</h2>
+    <div class="stats-two-col">
+        <div><h3>Frame material</h3><canvas id="box-frame_material_enc" height="200"></canvas></div>
+        <div><h3>Brake type</h3><canvas id="box-brake_type_enc" height="200"></canvas></div>
+    </div>
+</section>
+
+<section>
+    <h2>Heatmaps</h2>
+    <div class="stats-two-col">
+        <div><h3>Pedals vs drop handlebars</h3><canvas id="heatmap-pedals" height="220"></canvas></div>
+        <div><h3>Column correlation</h3><canvas id="heatmap-correlation" height="380"></canvas></div>
+    </div>
+</section>
+
+{% if clusters %}
+<section>
+    <h2>Clusters</h2>
+    <figure>
+    <table>
+        <thead><tr><th>Label</th><th>Offers</th><th>Avg price</th></tr></thead>
+        <tbody>
+            {% for c in clusters %}
+            <tr>
+                <td>{{ c.label|default:"—" }}</td>
+                <td>{{ c.count|default:"—" }}</td>
+                <td>{{ c.avg_price|floatformat:0|default:"—" }} PLN</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </figure>
+</section>
+{% endif %}
+
+<script>
+function noData(canvasId) {
+    const el = document.getElementById(canvasId);
+    el.insertAdjacentHTML("afterend", '<p class="muted">No data yet.</p>');
+    el.remove();
+}
+
+function drawBar(canvasId, labels, data, colors) {
+    if (!labels.length) { noData(canvasId); return; }
+    new Chart(document.getElementById(canvasId), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Offers", data, backgroundColor: colors || "rgba(56,189,248,0.85)" }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+}
+
+function fetchAndDrawBar(canvasId, url) {
+    fetch(url).then(r => r.json()).then(d => drawBar(canvasId, d.labels, d.data));
+}
+
+function fetchAndDrawMultiScatter(canvasId, series, xLabel, yLabel) {
+    // series: [{ url, label, color }, ...] — one dataset per series, same axes.
+    Promise.all(series.map(s => fetch(s.url).then(r => r.json())))
+        .then(results => {
+            const datasets = results
+                .map((d, i) => ({ label: series[i].label, data: d.points, backgroundColor: series[i].color }))
+                .filter(ds => ds.data.length);
+            if (!datasets.length) { noData(canvasId); return; }
+            new Chart(document.getElementById(canvasId), {
+                type: "scatter",
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true } },
+                    scales: { x: { title: { display: true, text: xLabel } }, y: { title: { display: true, text: yLabel } } }
+                }
+            });
+        });
+}
+
+function fetchAndDrawScatter(canvasId, url, xLabel, yLabel) {
+    fetch(url).then(r => r.json()).then(d => {
+        if (!d.points.length) { noData(canvasId); return; }
+        new Chart(document.getElementById(canvasId), {
+            type: "scatter",
+            data: { datasets: [{ label: `${xLabel} vs ${yLabel}`, data: d.points, backgroundColor: "rgba(248,81,73,0.85)" }] },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { x: { title: { display: true, text: xLabel } }, y: { title: { display: true, text: yLabel } } }
+            }
+        });
+    });
+}
+
+function fetchAndDrawBoxplot(canvasId, url) {
+    fetch(url).then(r => r.json()).then(d => {
+        if (!d.labels.length) { noData(canvasId); return; }
+        new Chart(document.getElementById(canvasId), {
+            type: "boxplot",
+            data: { labels: d.labels, datasets: [{ label: "Price (PLN)", data: d.data, backgroundColor: "rgba(52,211,153,0.55)" }] },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    });
+}
+
+function drawMatrix(canvasId, xLabels, yLabels, cells, title) {
+    if (!cells.length) { noData(canvasId); return; }
+    const maxAbs = Math.max(1, ...cells.map(c => Math.abs(c.v)));
+    if (typeof MatrixController !== "undefined") {
+        Chart.register(MatrixController, MatrixElement);
+    }
+    new Chart(document.getElementById(canvasId), {
+        type: "matrix",
+        data: {
+            datasets: [{
+                label: title,
+                data: cells,
+                backgroundColor(c) {
+                    const v = c.dataset.data[c.dataIndex].v;
+                    const alpha = Math.min(1, Math.abs(v) / maxAbs);
+                    return v >= 0 ? `rgba(52,211,153,${0.2 + alpha * 0.75})` : `rgba(248,81,73,${0.2 + alpha * 0.75})`;
+                },
+                width: (c) => (c.chart.chartArea || {}).width / xLabels.length - 2,
+                height: (c) => (c.chart.chartArea || {}).height / yLabels.length - 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { title: () => "", label: (c) => `${c.dataset.data[c.dataIndex].y} / ${c.dataset.data[c.dataIndex].x}: ${c.dataset.data[c.dataIndex].v}` } }
+            },
+            scales: {
+                x: { type: "category", labels: xLabels, offset: true, ticks: { autoSkip: false } },
+                y: { type: "category", labels: yLabels, offset: true, ticks: { autoSkip: false } },
+            }
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Price histogram
+    fetch("{% url 'price_chart_data' %}")
+        .then(r => r.json())
+        .then(d => {
+            if (!d.labels.length) { noData("price-chart"); return; }
+            new Chart(document.getElementById("price-chart"), {
+                type: "bar",
+                data: {
+                    labels: d.labels,
+                    datasets: [{
+                        label: "Offers",
+                        data: d.data,
+                        backgroundColor: "rgba(56,189,248,0.85)",
+                        borderColor: "rgba(56,189,248,1)",
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        });
+
+    // Condition breakdown
+    const condData = [{% for row in by_condition %}{ label: "{{ row.condition|default:'Unknown' }}", count: {{ row.count }} },{% endfor %}];
+    if (condData.length) {
+        new Chart(document.getElementById("condition-chart"), {
+            type: "bar",
+            data: {
+                labels: condData.map(d => d.label),
+                datasets: [{
+                    label: "Offers",
+                    data: condData.map(d => d.count),
+                    backgroundColor: ["rgba(56,189,248,0.9)","rgba(52,211,153,0.9)","rgba(248,81,73,0.9)","rgba(251,191,36,0.9)"],
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+    } else {
+        noData("condition-chart");
+    }
+
+    // Classification breakdown (bar, not a pie/doughnut)
+    const classData = [{% for row in by_classification %}{ label: {% if row.is_bike == 1 %}"Bike"{% elif row.is_bike == 0 %}"Noise"{% else %}"Unclassified"{% endif %}, count: {{ row.count }}, color: {% if row.is_bike == 1 %}"rgba(52,211,153,0.9)"{% elif row.is_bike == 0 %}"rgba(248,81,73,0.9)"{% else %}"rgba(180,180,180,0.8)"{% endif %} },{% endfor %}];
+    if (classData.length) {
+        new Chart(document.getElementById("bike-chart"), {
+            type: "bar",
+            data: {
+                labels: classData.map(d => d.label),
+                datasets: [{ label: "Offers", data: classData.map(d => d.count), backgroundColor: classData.map(d => d.color) }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+    } else {
+        noData("bike-chart");
+    }
+
+    // Histograms
+    ["frame_size_cm", "wheel_size_inch", "tire_width_mm", "production_year"].forEach(field => {
+        fetchAndDrawBar(`hist-${field}`, `/api/chart/histogram/${field}/`);
+    });
+
+    // Scatter plots
+    fetchAndDrawScatter("scatter-price_vs_gear_count", "/api/chart/scatter/price_vs_gear_count/", "Price (PLN)", "Gear count");
+    fetchAndDrawScatter("scatter-price_vs_frame_size_cm", "/api/chart/scatter/price_vs_frame_size_cm/", "Price (PLN)", "Frame size (cm)");
+    fetchAndDrawScatter("scatter-price_vs_weight_kg", "/api/chart/scatter/price_vs_weight_kg/", "Price (PLN)", "Weight (kg)");
+    fetchAndDrawMultiScatter("scatter-frame_size_vs_height", [
+        { url: "/api/chart/scatter/frame_size_vs_height_min/", label: "Min height", color: "rgba(56,189,248,0.9)" },
+        { url: "/api/chart/scatter/frame_size_vs_height_mid/", label: "Mean height", color: "rgba(52,211,153,0.9)" },
+        { url: "/api/chart/scatter/frame_size_vs_height_max/", label: "Max height", color: "rgba(248,81,73,0.9)" },
+    ], "Frame size (cm)", "Rider height (cm)");
+
+    // Categorical bars (server-aggregated, passed via context)
+    drawBar(
+        "bar-bike_type_enc",
+        [{% for row in by_bike_type_enc %}"{{ row.label }}",{% endfor %}],
+        [{% for row in by_bike_type_enc %}{{ row.count }},{% endfor %}]
+    );
+    drawBar(
+        "bar-gender_enc",
+        [{% for row in by_gender_enc %}"{{ row.label }}",{% endfor %}],
+        [{% for row in by_gender_enc %}{{ row.count }},{% endfor %}]
+    );
+
+    // Color by gender, stacked bar
+    const colorByGender = {
+        colors: [{% for c in color_by_gender.colors %}"{{ c }}",{% endfor %}],
+        genders: [{% for g in color_by_gender.genders %}"{{ g }}",{% endfor %}],
+        series: [{% for s in color_by_gender.series %}[{% for v in s %}{{ v }},{% endfor %}],{% endfor %}],
+    };
+    if (colorByGender.colors.length) {
+        const palette = ["rgba(56,189,248,0.9)","rgba(248,81,73,0.9)","rgba(52,211,153,0.9)","rgba(251,191,36,0.9)","rgba(192,132,252,0.9)"];
+        new Chart(document.getElementById("bar-color_by_gender"), {
+            type: "bar",
+            data: {
+                labels: colorByGender.colors,
+                datasets: colorByGender.genders.map((g, i) => ({
+                    label: g,
+                    data: colorByGender.series[i],
+                    backgroundColor: palette[i % palette.length],
+                })),
+            },
+            options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+    } else {
+        noData("bar-color_by_gender");
+    }
+
+    // Boxplots
+    fetchAndDrawBoxplot("box-frame_material_enc", "/api/chart/boxplot/frame_material_enc/");
+    fetchAndDrawBoxplot("box-brake_type_enc", "/api/chart/boxplot/brake_type_enc/");
+
+    // Heatmaps
+    fetch("/api/chart/heatmap/pedals-handlebars/").then(r => r.json()).then(d => {
+        const xLabels = [...new Set(d.cells.map(c => c.x))];
+        const yLabels = [...new Set(d.cells.map(c => c.y))];
+        drawMatrix("heatmap-pedals", xLabels, yLabels, d.cells, "Pedals vs drop handlebars");
+    });
+    fetch("/api/chart/heatmap/correlation/").then(r => r.json()).then(d => {
+        if (!d.columns.length) { noData("heatmap-correlation"); return; }
+        const cells = [];
+        d.columns.forEach((xCol, i) => {
+            d.columns.forEach((yCol, j) => {
+                cells.push({ x: xCol, y: yCol, v: Math.round(d.matrix[i][j] * 100) / 100 });
+            });
+        });
+        drawMatrix("heatmap-correlation", d.columns, d.columns, cells, "Correlation");
+    });
+});
+</script>
+
+{% endblock %}

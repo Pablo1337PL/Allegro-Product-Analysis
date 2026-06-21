@@ -1,0 +1,73 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Showcases{% endblock %}
+
+{% block content %}
+<h1>Showcases</h1>
+<p class="muted">How the visual and tabular features that drive clustering/similarity
+are actually built, with a few random example offers. Selection is reshuffled each
+time these are regenerated (<code>ml/build_showcase.py</code> /
+<code>ml/build_spec_showcase.py</code>).</p>
+
+<section class="showcase">
+    <h2>How visual features are built</h2>
+    <p class="muted">Visual clusters group bikes by appearance. Each photo is run
+    through YOLOv8 (detect the bike) → SAM (mask it) → composite on white &amp; crop;
+    that crop is embedded with CLIP into the vector the visual cluster map clusters on.</p>
+    {% if showcase %}
+    {% for bike in showcase %}
+    <article class="showcase-row">
+        <header><a href="{% url 'offer_detail' bike.offer_id %}">{{ bike.title }}</a></header>
+        <div class="showcase-steps">
+            {% for step in bike.steps %}
+            <figure>
+                <img src="{{ step.url }}" alt="{{ step.label }}" loading="lazy">
+                <figcaption>{{ step.label }}</figcaption>
+            </figure>
+            {% endfor %}
+        </div>
+    </article>
+    {% endfor %}
+    {% else %}
+    <p class="muted">No showcase generated yet — run
+    <code>python ml/build_showcase.py</code>.</p>
+    {% endif %}
+</section>
+
+<section class="showcase">
+    <h2>How missing specs are filled from descriptions</h2>
+    <p class="muted">Tabular clusters group bikes by structured <code>spec_*</code>
+    columns. When Allegro's parameter box leaves a column empty, the spec backfill
+    sends the cleaned description to a local LLM (qwen2.5) inside the prompt shown
+    below, asking it to extract every known field — and normalises what it finds into
+    the <code>spec_*</code> columns that join the tabular cluster map's vector.</p>
+    {% if spec_showcase %}
+    {% for bike in spec_showcase %}
+    <article class="showcase-row spec-showcase-row">
+        <header><a href="{% url 'offer_detail' bike.offer_id %}">{{ bike.title }}</a></header>
+        <div class="spec-showcase-stages">
+            <figure>
+                <figcaption>1. What Ollama is prompted with</figcaption>
+                <div class="spec-desc spec-prompt">{{ bike.prompt }}</div>
+            </figure>
+            <figure>
+                <figcaption>2. Filled spec columns</figcaption>
+                <dl class="spec-pairs">
+                    {% for f in bike.filled %}
+                    <dt>{{ f.label }} <span class="spec-source spec-source-{{ f.source }}">{{ f.source }}</span></dt>
+                    <dd>
+                        <code>{{ f.column }}</code> = {{ f.raw_value }}{% if f.validated_value != f.raw_value %} &rarr; {{ f.validated_value }}{% endif %}
+                        {% if f.evidence %}<div class="spec-evidence">found in: &ldquo;{{ f.evidence }}&rdquo;</div>{% endif %}
+                        {% if f.explanation %}<div class="spec-explanation">{{ f.explanation }}</div>{% endif %}
+                    </dd>
+                    {% endfor %}
+                </dl>
+            </figure>
+        </div>
+    </article>
+    {% endfor %}
+    {% else %}
+    <p class="muted">No spec showcase generated yet — run
+    <code>python ml/build_spec_showcase.py</code>.</p>
+    {% endif %}
+</section>
+{% endblock %}

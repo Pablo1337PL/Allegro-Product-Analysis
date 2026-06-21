@@ -1,19 +1,37 @@
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Road Bikes{% endblock %} — Allegro Analyser</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="{% static 'dashboard/style.css' %}">
+    <link rel="stylesheet" href="{% static 'dashboard/style.css' %}?v=3">
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4/build/index.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2/dist/chartjs-chart-matrix.min.js" defer></script>
+    <script defer>
+        // Page is pinned to Pico's light theme (data-theme="light" above) regardless
+        // of the browser/OS colour-scheme preference, so Chart.js chrome (ticks/
+        // labels/legend/grid) must target a light background. Bar/point colours
+        // stay vibrant; only the chrome changes here.
+        Chart.defaults.color = '#444444';
+        Chart.defaults.borderColor = 'rgba(0,0,0,0.12)';
+        Chart.defaults.scale.grid.color = 'rgba(0,0,0,0.08)';
+    </script>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <header class="container-fluid">
         <nav>
             <ul><li><strong><a href="{% url 'offer_list' %}" class="nav-brand">Road Bikes Analyser</a></strong></li></ul>
+            <ul>
+                <li><a href="{% url 'offer_list' %}">Listings</a></li>
+                <li><a href="{% url 'stats' %}">Statistics</a></li>
+                <li><a href="{% url 'cluster_lab_index' %}">Cluster Lab</a></li>
+                <li><a href="{% url 'showcases' %}">Showcases</a></li>
+            </ul>
         </nav>
     </header>
     <main class="container">

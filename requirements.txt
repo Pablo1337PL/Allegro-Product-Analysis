@@ -6,13 +6,27 @@ django-htmx>=1.17
 requests>=2.31
 beautifulsoup4>=4.12
 lxml>=5.0
+selenium>=4.18
+undetected-geckodriver>=0.4
 open-clip-torch>=2.24
 Pillow>=10.0
-numpy>=1.26
+# Keep numpy <2: TensorFlow (pulled by umap-learn's parametric submodule) is built
+# against the numpy 1.x ABI and crashes on import under numpy 2. (ultralytics pulls
+# a newer opencv that prefers numpy>=2, but it runs fine on 1.26.)
+numpy>=1.26,<2
 scikit-learn>=1.4
 xgboost>=2.0
+pandas>=2.0
+# Similarity + clustering lab (ml/similarity.py, ml/cluster_lab.py)
+faiss-cpu>=1.8
+umap-learn>=0.5
+hdbscan>=0.8
+# Visual pipeline — YOLOv8 + SAM segmentation (processor/segmentation_worker.py)
+ultralytics>=8.4
+# Spec backfill Layer 2 uses a local Ollama service (no pip dep; HTTP via requests).
+# pydantic builds the grammar-constrained extraction schema (model_json_schema());
+# the extractor imports it lazily and degrades to plain format:"json" if absent.
+pydantic>=2.5
 pytest>=8.0
 pytest-django>=4.8
 factory-boy>=3.3
-selenium>=4.18
-undetected-geckodriver>=0.4

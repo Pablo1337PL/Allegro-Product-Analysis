@@ -10,75 +10,136 @@
 </div>
 
 <form id="filter-form"
+      action="{% url 'offer_list' %}"
+      method="get"
       hx-get="{% url 'offer_list' %}"
       hx-target="#offer-rows"
       hx-push-url="true"
-      hx-indicator="#htmx-spinner">
-    <div class="filter-grid">
-        <input type="search" name="search" placeholder="Search title..."
-               value="{{ request.GET.search|default:'' }}">
-        <select name="condition">
-            <option value="">All conditions</option>
-            {% for cond in conditions %}
-            <option value="{{ cond }}" {% if request.GET.condition == cond %}selected{% endif %}>
-                {{ cond|default:"Unknown" }}
-            </option>
-            {% endfor %}
-        </select>
-        <input type="number" name="min_price" placeholder="Min PLN"
-               value="{{ request.GET.min_price|default:'' }}" min="0">
-        <input type="number" name="max_price" placeholder="Max PLN"
-               value="{{ request.GET.max_price|default:'' }}" min="0">
-        <button type="submit">Filter</button>
-        <a href="{% url 'offer_list' %}" role="button" class="secondary">Reset</a>
+      hx-indicator="#htmx-spinner"
+      hx-trigger="submit">
+    <div class="listing-layout">
+
+        {# ── Left filter rail (Allegro-style) ──────────────────────────── #}
+        <aside class="filter-sidebar">
+            <div class="filter-field">
+                <input type="search" name="search" placeholder="Search title…"
+                       value="{{ request.GET.search|default:'' }}">
+            </div>
+
+            <details open>
+                <summary>Basics</summary>
+                <div class="filter-field">
+                    <label>Type</label>
+                    <select name="is_bike">
+                        <option value="">All types</option>
+                        <option value="1" {% if request.GET.is_bike == "1" %}selected{% endif %}>Bikes only</option>
+                        <option value="0" {% if request.GET.is_bike == "0" %}selected{% endif %}>Noise only</option>
+                        <option value="null" {% if request.GET.is_bike == "null" %}selected{% endif %}>Unclassified</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Price (PLN)</label>
+                    <div class="range-inputs">
+                        <input type="number" name="min_price" placeholder="min" min="0" step="100"
+                               value="{{ request.GET.min_price|default:'' }}">
+                        <input type="number" name="max_price" placeholder="max" min="0" step="100"
+                               value="{{ request.GET.max_price|default:'' }}">
+                    </div>
+                </div>
+                {% if clusters %}
+                <div class="filter-field">
+                    <label>Cluster</label>
+                    <select name="cluster">
+                        <option value="">All clusters</option>
+                        {% for c in clusters %}
+                        <option value="{{ c.id }}" {% if request.GET.cluster == c.id|stringformat:"s" %}selected{% endif %}>
+                            {{ c.label|default:"Cluster "|add:c.id }} ({{ c.count }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </details>
+
+            <details>
+                <summary>Specifications</summary>
+                {% for nf in numeric_filters %}
+                <div class="filter-field">
+                    <label>{{ nf.label }}</label>
+                    <div class="range-inputs">
+                        <input type="number" step="any" name="{{ nf.field }}_min" placeholder="min" value="{{ nf.min }}">
+                        <input type="number" step="any" name="{{ nf.field }}_max" placeholder="max" value="{{ nf.max }}">
+                    </div>
+                </div>
+                {% endfor %}
+            </details>
+
+            <details>
+                <summary>Categories</summary>
+                {% for ef in enc_filters %}
+                <div class="filter-field">
+                    <label>{{ ef.label }}</label>
+                    <select name="{{ ef.field }}">
+                        <option value="">Any</option>
+                        {% for opt in ef.options %}
+                        <option value="{{ opt.value }}" {% if ef.current == opt.value|stringformat:"s" %}selected{% endif %}>
+                            {{ opt.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </details>
+
+            <details>
+                <summary>Image attributes</summary>
+                {% for bf in bool_filters %}
+                <div class="filter-field">
+                    <label>{{ bf.label }}</label>
+                    <select name="{{ bf.field }}">
+                        <option value="">Any</option>
+                        <option value="1" {% if bf.current == "1" %}selected{% endif %}>Yes</option>
+                        <option value="0" {% if bf.current == "0" %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+                {% endfor %}
+            </details>
+
+            <div class="filter-actions">
+                <button type="submit">Apply filters</button>
+                <a href="{% url 'offer_list' %}" role="button" class="secondary outline">Reset</a>
+            </div>
+        </aside>
+
+        {# ── Main column: sort toolbar + results ───────────────────────── #}
+        <div class="listing-main">
+            <div class="listing-toolbar">
+                <label class="sort-control">
+                    Sort by
+                    <select name="sort" onchange="this.form.requestSubmit()">
+                        <option value="" {% if current_sort == "" %}selected{% endif %}>Newest</option>
+                        <option value="price_asc" {% if current_sort == "price_asc" %}selected{% endif %}>Price ↑</option>
+                        <option value="price_desc" {% if current_sort == "price_desc" %}selected{% endif %}>Price ↓</option>
+                        <option value="cluster_asc" {% if current_sort == "cluster_asc" %}selected{% endif %}>vs. cluster avg ↑ (best deals)</option>
+                        <option value="cluster_desc" {% if current_sort == "cluster_desc" %}selected{% endif %}>vs. cluster avg ↓</option>
+                    </select>
+                </label>
+                <span id="htmx-spinner" class="htmx-indicator">Loading…</span>
+            </div>
+
+            <div id="offer-rows">
+                {% include "dashboard/_offer_rows.html" %}
+            </div>
+        </div>
     </div>
-    <span id="htmx-spinner" class="htmx-indicator">Loading...</span>
 </form>
 
-<div id="offer-rows">
-    {% include "dashboard/_offer_rows.html" %}
-</div>
-
-<details class="chart-section">
-    <summary>Price Distribution</summary>
-    <canvas id="price-chart" height="80"></canvas>
-</details>
-
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    // Stats
-    fetch("{% url 'stats_partial' %}")
-        .then(r => r.json())
-        .then(d => {
-            document.getElementById("stats-total").textContent = d.total.toLocaleString();
-            document.getElementById("stats-avg").textContent = d.avg_price.toLocaleString();
-        });
-
-    // Chart
-    fetch("{% url 'price_chart_data' %}")
-        .then(r => r.json())
-        .then(d => {
-            if (!d.labels.length) return;
-            const ctx = document.getElementById("price-chart").getContext("2d");
-            new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: d.labels,
-                    datasets: [{
-                        label: "Offers",
-                        data: d.data,
-                        backgroundColor: "rgba(59, 130, 246, 0.55)",
-                        borderColor: "rgba(59, 130, 246, 0.9)",
-                        borderWidth: 1,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-                }
-            });
-        });
-});
+fetch("{% url 'stats_partial' %}")
+    .then(r => r.json())
+    .then(d => {
+        document.getElementById("stats-total").textContent = d.total.toLocaleString();
+        document.getElementById("stats-avg").textContent = d.avg_price.toLocaleString();
+    });
 </script>
 {% endblock %}

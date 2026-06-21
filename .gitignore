@@ -20,11 +20,16 @@ dist/
 build/
 .pytest_cache/
 
+# secrets
 
+scraper/
+tests/
+db/
 
 # Django
 *.log
 staticfiles/
+media/
 
 # OS
 .DS_Store
@@ -38,7 +43,11 @@ Thumbs.db
 # clip
 clip_cache/
 
+# sam and yolo
+sam2_b.pt
+yolov8n.pt
+
 # claude 
 .claude/
 CLAUDE.md
-PLAN.md
+PLAN*.md

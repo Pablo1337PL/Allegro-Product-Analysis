@@ -1,0 +1,22 @@
+{% if similarities %}
+<div class="similar-grid">
+    {% for sim in similarities %}
+    <a href="{% url 'offer_detail' sim.similar_id %}" class="similar-card">
+        {% if sim.thumbnail_url %}
+        <img src="{{ sim.thumbnail_url }}" alt="{{ sim.title }}" loading="lazy" class="similar-thumb">
+        {% else %}
+        <div class="similar-thumb similar-thumb--empty"></div>
+        {% endif %}
+        <div class="similar-info">
+            <p class="similar-title">{{ sim.title|truncatechars:60 }}</p>
+            <p class="similar-price">{{ sim.price|floatformat:0 }} {{ sim.currency }}</p>
+            <p class="similar-score">Match: {{ sim.score|floatformat:2 }}</p>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% elif comparison_type == "visual" %}
+<p class="muted">No visual similarity yet — run the visual pipeline (segmentation + <code>clip_vector_visual</code>), then <code>python ml/build_index.py --only-similarity</code>.</p>
+{% else %}
+<p class="muted">No similar bikes indexed yet. Run <code>python ml/build_index.py --only-similarity</code> to build the index.</p>
+{% endif %}

@@ -1,0 +1,65 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Cluster Lab{% endblock %}
+
+{% block content %}
+<h1>Cluster Lab</h1>
+<p>Compare clustering algorithms across two independent feature sets. Each run is
+a feature set × algorithm combination; pick one to see its 2D map and clusters.
+Sorted by silhouette score (higher = better-separated clusters).</p>
+
+<section>
+    <h2>Tabular &amp; text features</h2>
+    <p class="muted">Clusters on structured specs, price and condition.</p>
+    {% if tabular_runs %}
+    <figure>
+    <table role="grid">
+        <thead>
+            <tr><th>Algorithm</th><th>Clusters</th><th>k</th><th>Silhouette</th><th>Noise</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for r in tabular_runs %}
+            <tr {% if r.is_primary %}class="run-primary"{% endif %}>
+                <td>{{ r.algorithm }}{% if r.is_primary %} <span class="badge badge-bike">primary</span>{% endif %}</td>
+                <td>{{ r.n_clusters }}</td>
+                <td>{{ r.k_selected|default:"—" }}</td>
+                <td>{{ r.silhouette|floatformat:3|default:"—" }}</td>
+                <td>{% if r.noise_count %}{{ r.noise_count }}{% else %}—{% endif %}</td>
+                <td><a href="{% url 'cluster_lab_run' r.run_id %}" role="button" class="secondary">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </figure>
+    {% else %}
+    <p class="muted">No tabular runs yet. Run <code>python ml/cluster_lab.py --feature-set tabular</code>.</p>
+    {% endif %}
+</section>
+
+<section>
+    <h2>Visual features</h2>
+    <p class="muted">Clusters on the bike image embedding (<code>clip_vector_visual</code>) — separate from the tabular view.</p>
+    {% if visual_runs %}
+    <figure>
+    <table role="grid">
+        <thead>
+            <tr><th>Algorithm</th><th>Clusters</th><th>k</th><th>Silhouette</th><th>Noise</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for r in visual_runs %}
+            <tr>
+                <td>{{ r.algorithm }}</td>
+                <td>{{ r.n_clusters }}</td>
+                <td>{{ r.k_selected|default:"—" }}</td>
+                <td>{{ r.silhouette|floatformat:3|default:"—" }}</td>
+                <td>{% if r.noise_count %}{{ r.noise_count }}{% else %}—{% endif %}</td>
+                <td><a href="{% url 'cluster_lab_run' r.run_id %}" role="button" class="secondary">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </figure>
+    {% else %}
+    <p class="muted">No visual runs yet. The visual pipeline (segmentation → <code>clip_vector_visual</code>) hasn't been run, so there are no image embeddings to cluster.</p>
+    {% endif %}
+</section>
+{% endblock %}

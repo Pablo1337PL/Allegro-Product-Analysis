@@ -11,7 +11,7 @@
             <dt>Price</dt>
             <dd class="price-big">{{ offer.price|floatformat:2 }} {{ offer.currency }}</dd>
             <dt>Condition</dt>
-            <dd>{{ offer.condition|default:"—" }}</dd>
+            <dd>{% if offer.condition %}{{ offer.condition }} / 5{% else %}—{% endif %}</dd>
             <dt>Type</dt>
             <dd>{{ offer.listing_type|default:"—" }}</dd>
             <dt>Seller</dt>
@@ -24,12 +24,64 @@
             {% endif %}
         </dl>
     </div>
-    {% if offer.thumbnail_url %}
+    {% if images %}
+    <div>
+        <img src="{{ images.0.url }}" alt="{{ offer.title }}" class="thumbnail-main" loading="lazy">
+    </div>
+    {% elif offer.thumbnail_url %}
     <div>
         <img src="{{ offer.thumbnail_url }}" alt="{{ offer.title }}" class="thumbnail-main" loading="lazy">
     </div>
     {% endif %}
 </div>
+
+{% if cluster or features %}
+<section class="stats-panel">
+    <h3>Analysis</h3>
+    <div class="stats-grid">
+        {% if cluster %}
+        <div class="stat-card">
+            <span class="stat-label">Cluster</span>
+            <span class="stat-value"><a href="{% url 'cluster_lab_run' 'tabular_kmeans' %}">{{ cluster.label|default:"—" }}</a></span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Avg cluster price</span>
+            <span class="stat-value">{{ cluster.avg_price|floatformat:0 }} PLN</span>
+        </div>
+        {% if price_vs_avg is not None %}
+        <div class="stat-card {% if price_vs_avg < 0 %}stat-deal{% elif price_vs_avg > 15 %}stat-expensive{% endif %}">
+            <span class="stat-label">vs. cluster avg</span>
+            <span class="stat-value">{% if price_vs_avg > 0 %}+{% endif %}{{ price_vs_avg }}%</span>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {% if features %}
+        {% if features.extracted_groupset %}
+        <div class="stat-card">
+            <span class="stat-label">Groupset</span>
+            <span class="stat-value">{{ features.extracted_groupset }}</span>
+        </div>
+        {% endif %}
+        {% if offer.condition %}
+        <div class="stat-card">
+            <span class="stat-label">Condition (1–5)</span>
+            <span class="stat-value condition-grade condition-{{ offer.condition }}">{{ offer.condition }} / 5</span>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    {% if offer.zero_shot_confidence is not None %}
+    <div class="attr-pills">
+        {% if offer.has_drop_handlebars %}<span class="pill pill-yes">Drop handlebars</span>{% endif %}
+        {% if offer.has_flat_handlebars %}<span class="pill pill-yes">Flat handlebars</span>{% endif %}
+        {% if offer.has_disc_brakes %}<span class="pill pill-yes">Disc brakes</span>{% endif %}
+        {% if offer.has_pedals %}<span class="pill pill-yes">Pedals</span>{% endif %}
+    </div>
+    {% endif %}
+</section>
+{% endif %}
 
 {% if images %}
 <section>
@@ -52,7 +104,13 @@
         <thead><tr><th>Name</th><th>Value</th></tr></thead>
         <tbody>
             {% for param in parameters %}
-            <tr><td>{{ param.name }}</td><td>{{ param.value|default:"—" }}</td></tr>
+            <tr>
+                <td>{{ param.name }}</td>
+                <td>
+                    {{ param.value|default:"—" }}
+                    {% if param.ai_evidence %}<span class="ai-evidence" title="Extracted by the local LLM from the description">AI · found in: &ldquo;{{ param.ai_evidence }}&rdquo;</span>{% endif %}
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
@@ -67,13 +125,10 @@
     <table>
         <tbody>
             {% if features.description_text %}
-            <tr><td>Description</td><td>{{ features.description_text|truncatechars:400 }}</td></tr>
+            <tr><td>Description</td><td>{{ features.description_text }}</td></tr>
             {% endif %}
             {% if features.extracted_groupset %}
             <tr><td>Groupset</td><td>{{ features.extracted_groupset }}</td></tr>
-            {% endif %}
-            {% if features.extracted_frame_material %}
-            <tr><td>Frame material</td><td>{{ features.extracted_frame_material }}</td></tr>
             {% endif %}
             {% if features.price_predicted %}
             <tr><td>Predicted price</td><td>{{ features.price_predicted|floatformat:0 }} PLN</td></tr>
@@ -87,5 +142,27 @@
     </figure>
 </section>
 {% endif %}
+
+<section>
+    <h3>Similar specs</h3>
+    <p class="muted">Closest bikes by structured specs, price and condition.</p>
+    <div id="similar-specs"
+         hx-get="{% url 'similar_offers' offer.id %}?type=specs"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <p aria-busy="true">Loading similar bikes&hellip;</p>
+    </div>
+</section>
+
+<section>
+    <h3>Similar looking</h3>
+    <p class="muted">Closest bikes by visual appearance of the bike image.</p>
+    <div id="similar-visual"
+         hx-get="{% url 'similar_offers' offer.id %}?type=visual"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <p aria-busy="true">Loading similar bikes&hellip;</p>
+    </div>
+</section>
 
 {% endblock %}

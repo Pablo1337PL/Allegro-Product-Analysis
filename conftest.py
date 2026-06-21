@@ -14,7 +14,7 @@ def pytest_configure(config):
     os.environ.setdefault("CLIP_MODEL", "ViT-B-32")
     os.environ.setdefault("CLIP_PRETRAINED", "openai")
     os.environ.setdefault("CLIP_CACHE_DIR", "/tmp/clip_cache_test")
-    os.environ.setdefault("SCRAPER_SEARCH", "rower szosowy")
+    os.environ.setdefault("SCRAPER_CATEGORY_URL", "https://allegro.pl/kategoria/rowery-szosowe-16484")
     os.environ.setdefault("SCRAPER_MIN_DELAY", "0")
     os.environ.setdefault("SCRAPER_MAX_DELAY", "0")
 
@@ -27,7 +27,7 @@ def django_db_setup(django_test_environment, django_db_blocker):
         setup_databases(0, False)
 
         from django.db import connection
-        from downloader.writer import _TABLES
+        from scraper.writer import _TABLES
         with connection.cursor() as cursor:
             for stmt in _TABLES:
                 cursor.execute(stmt)

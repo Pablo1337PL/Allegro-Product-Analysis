@@ -1,0 +1,173 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Cluster Lab — {{ run_id }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'cluster_lab_index' %}">&larr; All runs</a></p>
+
+<h1>{{ meta.feature_set|title }} · {{ meta.algorithm }}</h1>
+{% if meta %}
+<div class="run-meta">
+    <span><strong>Feature set:</strong> {{ meta.feature_set }}</span>
+    <span><strong>Algorithm:</strong> {{ meta.algorithm }}</span>
+    <span><strong>Clusters:</strong> {{ meta.n_clusters }}</span>
+    {% if meta.k_selected %}<span><strong>k:</strong> {{ meta.k_selected }}</span>{% endif %}
+    <span><strong>Silhouette:</strong> {{ meta.silhouette|floatformat:3|default:"—" }}</span>
+    {% if meta.noise_count %}<span><strong>Noise:</strong> {{ meta.noise_count }}</span>{% endif %}
+    {% if meta.is_primary %}<span class="badge badge-bike">primary run</span>{% endif %}
+</div>
+{% endif %}
+
+<div class="reducer-toggle" role="group">
+    <button type="button" data-reducer="pca" class="active">PCA</button>
+    <button type="button" data-reducer="umap">UMAP</button>
+    <button type="button" data-reducer="tsne">t-SNE</button>
+</div>
+<p class="muted">The projection only changes the 2D layout — cluster colours (the
+actual assignments) are identical across PCA/UMAP/t-SNE.</p>
+
+<div id="cluster-plot" style="width:100%;height:560px"></div>
+<img id="hover-thumb" alt="">
+<p class="muted">Hover a point to preview the bike; click it to open the offer.</p>
+
+{% if clusters %}
+<h2>Clusters</h2>
+<div class="cluster-rows">
+    {% for c in clusters %}
+    <article class="cluster-row {% if c.id == -1 %}cluster-noise{% endif %}" data-cluster="{{ c.id }}">
+        <header><strong>{{ c.label|default:"Cluster" }}</strong></header>
+        <dl>
+            <dt>Offers</dt><dd>{{ c.count|default:"—" }}</dd>
+            <dt>Avg price</dt><dd>{{ c.avg_price|floatformat:0|default:"—" }} PLN</dd>
+            <dt>Price std dev</dt><dd>{{ c.price_stddev|floatformat:0|default:"—" }} PLN</dd>
+            <dt>Avg weight</dt><dd>{% if c.avg_weight_kg %}{{ c.avg_weight_kg|floatformat:1 }} kg{% else %}—{% endif %}</dd>
+        </dl>
+        {% if c.frame_material_breakdown %}
+        <div class="cluster-material-breakdown">
+            {% for material, n in c.frame_material_breakdown.items %}
+            <span class="material-pill">{{ material }}: {{ n }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<p class="muted">No clusters for this run.</p>
+{% endif %}
+
+<p class="muted">Curious how the features behind this map are built? See the
+<a href="{% url 'showcases' %}">showcases page</a>.</p>
+
+<script>
+const CLUSTER_COLORS = [
+    '#e74c3c','#3498db','#2ecc71','#f39c12',
+    '#9b59b6','#1abc9c','#e67e22','#34495e',
+    '#c0392b','#2980b9','#27ae60','#d35400',
+];
+const RUN_DATA_URL = "{% url 'cluster_lab_data' run_id %}";
+let CURRENT = { points: null, labels: null, reducer: 'pca' };
+
+function draw() {
+    const { points, labels, reducer } = CURRENT;
+    const groups = {};
+    points.forEach(p => {
+        const xy = p[reducer];
+        if (!xy || xy[0] === null || xy[1] === null) return;
+        const cid = (p.cluster === null || p.cluster === undefined) ? -1 : p.cluster;
+        if (!groups[cid]) groups[cid] = { x: [], y: [], cd: [], texts: [] };
+        groups[cid].x.push(xy[0]);
+        groups[cid].y.push(xy[1]);
+        groups[cid].cd.push([p.id, p.thumb || null]);
+        const priceStr = p.price ? Math.round(p.price).toLocaleString() + ' PLN' : '?';
+        groups[cid].texts.push(`<b>${(p.title || '').slice(0, 50)}</b><br>${priceStr}`);
+    });
+
+    const cids = Object.keys(groups).map(Number).sort((a, b) => a - b);
+    let colorIdx = 0;
+    const traces = cids.map(cid => {
+        const noise = cid === -1;
+        const trace = {
+            type: 'scatter', mode: 'markers',
+            name: labels[cid] || (noise ? 'Noise / unclustered' : `Cluster ${cid}`),
+            x: groups[cid].x, y: groups[cid].y,
+            customdata: groups[cid].cd, text: groups[cid].texts,
+            hovertemplate: '%{text}<extra></extra>',
+            marker: noise
+                ? { color: '#b0b0b0', size: 6, opacity: 0.45 }
+                : { color: CLUSTER_COLORS[(colorIdx++) % CLUSTER_COLORS.length],
+                    size: 8, opacity: 0.8, line: { width: 0.5, color: 'white' } },
+        };
+        return trace;
+    });
+
+    const layout = {
+        // Page is pinned to Pico's light theme regardless of browser/OS colour
+        // scheme, so Plotly chrome targets a light background; marker colours
+        // stay vibrant.
+        font: { color: '#444444' },
+        xaxis: { title: reducer.toUpperCase() + '-1', zeroline: false, gridcolor: 'rgba(0,0,0,0.10)', color: '#444444' },
+        yaxis: { title: reducer.toUpperCase() + '-2', zeroline: false, gridcolor: 'rgba(0,0,0,0.10)', color: '#444444' },
+        legend: { orientation: 'h', y: -0.12 },
+        margin: { t: 20, b: 60, l: 50, r: 20 },
+        hovermode: 'closest', dragmode: 'pan',
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+    };
+    const config = { scrollZoom: true, responsive: true,
+        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'] };
+
+    const div = document.getElementById('cluster-plot');
+    Plotly.newPlot(div, traces, layout, config);
+
+    const thumb = document.getElementById('hover-thumb');
+    div.on('plotly_click', evt => {
+        const pt = evt.points[0];
+        if (pt && pt.customdata) window.location.href = `/offer/${pt.customdata[0]}/`;
+    });
+    div.on('plotly_hover', evt => {
+        const pt = evt.points[0];
+        const url = pt && pt.customdata ? pt.customdata[1] : null;
+        if (!url) { thumb.style.display = 'none'; return; }
+        thumb.src = url;
+        const e = evt.event;
+        // Offset from the cursor; flip to the left near the right edge.
+        const x = e.clientX + 16, y = e.clientY + 16;
+        thumb.style.left = (x + 160 > window.innerWidth ? e.clientX - 160 : x) + 'px';
+        thumb.style.top = Math.min(y, window.innerHeight - 160) + 'px';
+        thumb.style.display = 'block';
+    });
+    div.on('plotly_unhover', () => { thumb.style.display = 'none'; });
+}
+
+async function init() {
+    const div = document.getElementById('cluster-plot');
+    let payload;
+    try {
+        payload = await (await fetch(RUN_DATA_URL)).json();
+    } catch (e) {
+        div.innerHTML = '<p class="muted">Could not load cluster data.</p>';
+        return;
+    }
+    if (!payload.points || payload.points.length === 0) {
+        div.innerHTML = '<p class="muted">No points for this run.</p>';
+        return;
+    }
+    CURRENT.points = payload.points;
+    CURRENT.labels = payload.cluster_labels;
+    draw();
+
+    document.querySelectorAll('.reducer-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.reducer-toggle button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            CURRENT.reducer = btn.dataset.reducer;
+            draw();
+        });
+    });
+}
+init();
+</script>
+{% endblock %}

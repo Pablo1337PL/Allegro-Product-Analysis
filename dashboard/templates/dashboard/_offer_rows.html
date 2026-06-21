@@ -2,9 +2,11 @@
 <table role="grid">
     <thead>
         <tr>
+            <th></th>
             <th>Title</th>
             <th>Price</th>
-            <th>Condition</th>
+            <th>Type</th>
+            <th>Attributes</th>
             <th>Seller</th>
             <th>Fetched</th>
         </tr>
@@ -12,14 +14,39 @@
     <tbody>
         {% for offer in offers %}
         <tr>
-            <td><a href="{% url 'offer_detail' offer.id %}">{{ offer.title|truncatechars:65 }}</a></td>
-            <td class="price">{{ offer.price|floatformat:0 }} {{ offer.currency }}</td>
-            <td>{{ offer.condition }}</td>
+            <td class="thumb-cell">
+                {% if offer.thumbnail_url %}
+                <a href="{% url 'offer_detail' offer.id %}">
+                    <img src="{{ offer.thumbnail_url }}" alt="" class="list-thumb" loading="lazy">
+                </a>
+                {% endif %}
+            </td>
+            <td><a href="{% url 'offer_detail' offer.id %}">{{ offer.title|truncatechars:60 }}</a></td>
+            <td class="price">
+                {{ offer.price|floatformat:0 }} {{ offer.currency }}
+                {% if offer.vs_avg_label %}
+                <br><small class="vs-avg {% if offer.vs_avg_cheap %}vs-cheap{% else %}vs-expensive{% endif %}">{{ offer.vs_avg_label }}</small>
+                {% endif %}
+            </td>
+            <td>
+                {% if offer.is_bike == 1 %}
+                    <span class="badge badge-bike">bike</span>
+                {% elif offer.is_bike == 0 %}
+                    <span class="badge badge-noise">noise</span>
+                {% else %}
+                    <span class="badge badge-none">?</span>
+                {% endif %}
+            </td>
+            <td class="attr-cell">
+                {% if offer.listing_type == "SPONSORED" %}
+                    <span class="badge badge-none">ad</span>
+                {% endif %}
+            </td>
             <td>{{ offer.seller_login }}</td>
             <td>{{ offer.fetched_at|slice:":10" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="empty-row">No offers found.</td></tr>
+        <tr><td colspan="7" class="empty-row">No offers match the current filters.</td></tr>
         {% endfor %}
     </tbody>
 </table>
